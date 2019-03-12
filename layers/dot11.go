@@ -939,7 +939,6 @@ func (m *Dot11) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 				df.SetTruncated()
 				return fmt.Errorf("Dot11 length %v too short, %v required", len(data), offset+6)
 			}
-			m.Address1 = net.HardwareAddr(data[offset - 6 : offset])
 			m.Address2 = net.HardwareAddr(data[offset : offset+6])
 			offset += 6
 		}
@@ -1105,7 +1104,6 @@ func (m Dot11) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeOp
 	case Dot11TypeCtrl:
 		switch m.Type {
 		case Dot11TypeCtrlRTS, Dot11TypeCtrlPowersavePoll, Dot11TypeCtrlCFEnd, Dot11TypeCtrlCFEndAck, Dot11TypeCtrlBlockAck, Dot11TypeCtrlBlockAckReq:
-			copy(buf[offset-6:offset], m.Address1)
 			copy(buf[offset:offset+6], m.Address2)
 			offset += 6
 		}
@@ -1816,6 +1814,10 @@ func (m *Dot11MgmtReassociationResp) CanDecode() gopacket.LayerClass {
 func (m *Dot11MgmtReassociationResp) NextLayerType() gopacket.LayerType {
 	return LayerTypeDot11InformationElement
 }
+func (m *Dot11MgmtReassociationResp) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
+}
 
 type Dot11MgmtProbeReq struct {
 	Dot11Mgmt
@@ -1830,6 +1832,10 @@ func (m *Dot11MgmtProbeReq) LayerType() gopacket.LayerType  { return LayerTypeDo
 func (m *Dot11MgmtProbeReq) CanDecode() gopacket.LayerClass { return LayerTypeDot11MgmtProbeReq }
 func (m *Dot11MgmtProbeReq) NextLayerType() gopacket.LayerType {
 	return LayerTypeDot11InformationElement
+}
+func (m *Dot11MgmtProbeReq) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
 }
 
 type Dot11MgmtProbeResp struct {
@@ -1948,6 +1954,11 @@ func decodeDot11MgmtATIM(data []byte, p gopacket.PacketBuilder) error {
 
 func (m *Dot11MgmtATIM) LayerType() gopacket.LayerType  { return LayerTypeDot11MgmtATIM }
 func (m *Dot11MgmtATIM) CanDecode() gopacket.LayerClass { return LayerTypeDot11MgmtATIM }
+func (m *Dot11MgmtATIM) NextLayerType() gopacket.LayerType {return LayerTypeDot11InformationElement}
+func (m *Dot11MgmtATIM) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
+}
 
 type Dot11MgmtDisassociation struct {
 	Dot11Mgmt
@@ -1965,12 +1976,14 @@ func (m *Dot11MgmtDisassociation) LayerType() gopacket.LayerType {
 func (m *Dot11MgmtDisassociation) CanDecode() gopacket.LayerClass {
 	return LayerTypeDot11MgmtDisassociation
 }
+func (m *Dot11MgmtDisassociation) NextLayerType() gopacket.LayerType {return LayerTypeDot11InformationElement}
 func (m *Dot11MgmtDisassociation) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 	if len(data) < 2 {
 		df.SetTruncated()
 		return fmt.Errorf("Dot11MgmtDisassociation length %v too short, %v required", len(data), 2)
 	}
 	m.Reason = Dot11Reason(binary.LittleEndian.Uint16(data[0:2]))
+	m.Payload = data[2:]
 	return m.Dot11Mgmt.DecodeFromBytes(data, df)
 }
 
@@ -2049,12 +2062,14 @@ func (m *Dot11MgmtDeauthentication) LayerType() gopacket.LayerType {
 func (m *Dot11MgmtDeauthentication) CanDecode() gopacket.LayerClass {
 	return LayerTypeDot11MgmtDeauthentication
 }
+func (m *Dot11MgmtDeauthentication) NextLayerType() gopacket.LayerType {return LayerTypeDot11InformationElement}
 func (m *Dot11MgmtDeauthentication) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 	if len(data) < 2 {
 		df.SetTruncated()
 		return fmt.Errorf("Dot11MgmtDeauthentication length %v too short, %v required", len(data), 2)
 	}
 	m.Reason = Dot11Reason(binary.LittleEndian.Uint16(data[0:2]))
+	m.Payload = data[2:]
 	return m.Dot11Mgmt.DecodeFromBytes(data, df)
 }
 
@@ -2081,7 +2096,11 @@ func decodeDot11MgmtAction(data []byte, p gopacket.PacketBuilder) error {
 
 func (m *Dot11MgmtAction) LayerType() gopacket.LayerType  { return LayerTypeDot11MgmtAction }
 func (m *Dot11MgmtAction) CanDecode() gopacket.LayerClass { return LayerTypeDot11MgmtAction }
-
+func (m *Dot11MgmtAction) NextLayerType() gopacket.LayerType {return LayerTypeDot11InformationElement}
+func (m *Dot11MgmtAction) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
+}
 type Dot11MgmtActionNoAck struct {
 	Dot11Mgmt
 }
@@ -2093,6 +2112,11 @@ func decodeDot11MgmtActionNoAck(data []byte, p gopacket.PacketBuilder) error {
 
 func (m *Dot11MgmtActionNoAck) LayerType() gopacket.LayerType  { return LayerTypeDot11MgmtActionNoAck }
 func (m *Dot11MgmtActionNoAck) CanDecode() gopacket.LayerClass { return LayerTypeDot11MgmtActionNoAck }
+func (m *Dot11MgmtActionNoAck) NextLayerType() gopacket.LayerType {return LayerTypeDot11InformationElement}
+func (m *Dot11MgmtActionNoAck) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
+}
 
 type Dot11MgmtArubaWLAN struct {
 	Dot11Mgmt
