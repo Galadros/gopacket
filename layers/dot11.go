@@ -1900,6 +1900,13 @@ func (m *Dot11MgmtMeasurementPilot) LayerType() gopacket.LayerType {
 func (m *Dot11MgmtMeasurementPilot) CanDecode() gopacket.LayerClass {
 	return LayerTypeDot11MgmtMeasurementPilot
 }
+func (m *Dot11MgmtMeasurementPilot) NextLayerType() gopacket.LayerType {
+	return LayerTypeDot11InformationElement
+}
+func (m *Dot11MgmtMeasurementPilot) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
+	m.Payload = data
+	return m.Dot11Mgmt.DecodeFromBytes(data, df)
+}
 
 type Dot11MgmtBeacon struct {
 	Dot11Mgmt
